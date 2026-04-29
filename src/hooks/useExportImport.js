@@ -8,43 +8,28 @@ function tipoForma(tipo) {
 export function useExportImport(state, dispatch) {
 
   async function exportar() {
-    const schema = {
-      instalaciones: state.nodes.map(n => ({
-        id: n.id,
-        tipo: n.data.tipo,
-        nombre: n.data.nombre || '',
-        valorMin: n.data.valorMin ?? null,
-        valorMax: n.data.valorMax ?? null,
-        cl: n.data.cl ?? null,
-        notas: n.data.notas || '',
-        posicion: {
-          x: Math.round(n.position.x / GRID_SIZE),
-          y: Math.round(n.position.y / GRID_SIZE),
-        },
-      })),
-      conexiones: state.edges.map(e => ({
-        id: e.id,
-        origen: e.source,
-        destino: e.target,
-        ramal: e.data?.ramal ?? null,
-      })),
-    }
-    const json = JSON.stringify(schema, null, 2)
-
+    // showSaveFilePicker debe ser la primera llamada para mantener el contexto de gesto
     if (window.showSaveFilePicker) {
+      let handle
       try {
-        const handle = await window.showSaveFilePicker({
+        handle = await window.showSaveFilePicker({
           suggestedName: 'diagrama.json',
           types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
         })
+      } catch (e) {
+        if (e.name !== 'AbortError') alert('Error al abrir el diálogo de guardado.')
+        return
+      }
+      const json = buildJson()
+      try {
         const writable = await handle.createWritable()
         await writable.write(json)
         await writable.close()
-      } catch (e) {
-        if (e.name !== 'AbortError') alert('Error al guardar el fichero.')
+      } catch {
+        alert('Error al escribir el fichero.')
       }
     } else {
-      // Fallback para navegadores sin File System Access API
+      const json = buildJson()
       const blob = new Blob([json], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -53,6 +38,33 @@ export function useExportImport(state, dispatch) {
       a.click()
       URL.revokeObjectURL(url)
     }
+  }
+
+  function buildJson() {
+    const schema = {
+      instalaciones: state.nodes
+        .filter(n => n.type !== 'union')
+        .map(n => ({
+          id: n.id,
+          tipo: n.data.tipo,
+          nombre: n.data.nombre || '',
+          valorMin: n.data.valorMin ?? null,
+          valorMax: n.data.valorMax ?? null,
+          cl: n.data.cl ?? null,
+          notas: n.data.notas || '',
+          posicion: {
+            x: Math.round(n.position.x / GRID_SIZE),
+            y: Math.round(n.position.y / GRID_SIZE),
+          },
+        })),
+      conexiones: state.edges.map(e => ({
+        id: e.id,
+        origen: e.source,
+        destino: e.target,
+        ramal: e.data?.ramal ?? null,
+      })),
+    }
+    return JSON.stringify(schema, null, 2)
   }
 
   function importar(file, nodeHandlers, edgeHandlers) {

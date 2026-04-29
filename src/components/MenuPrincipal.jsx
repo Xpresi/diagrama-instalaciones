@@ -15,7 +15,7 @@ export default function MenuPrincipal({ onGuardar, onCargar, onClose }) {
         <h2 className="text-white font-bold text-lg mb-4 text-center">Esquema</h2>
         <div className="space-y-3">
           <button
-            onClick={() => { onGuardar(); onClose() }}
+            onClick={async () => { onClose(); await onGuardar() }}
             className="w-full py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-left px-4"
           >
             Guardar esquema (JSON)
