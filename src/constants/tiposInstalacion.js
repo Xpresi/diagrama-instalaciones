@@ -7,6 +7,7 @@ export const TIPOS = [
   { tipo: 6, prefijo: 'PD', label: 'PD – Rombo',          forma: 'rombo'      },
   { tipo: 7, prefijo: 'FV', label: 'FV – Sol',            forma: 'sol'        },
   { tipo: 8, prefijo: 'PR', label: 'PR – Olas',           forma: 'olas'       },
+  { tipo: 9, prefijo: 'ET', label: 'ET – Rejilla',        forma: 'rejilla'    },
 ]
 
 export const GRID_SIZE = 80
