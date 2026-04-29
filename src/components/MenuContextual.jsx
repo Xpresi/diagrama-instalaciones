@@ -10,6 +10,7 @@ export default function MenuContextual({ x, y, onConectar, onEditar, onBorrar, o
         onClick={e => e.stopPropagation()}
       >
         {[
+          { label: 'Mover',    action: onClose    },
           { label: 'Conectar', action: onConectar },
           { label: 'Editar',   action: onEditar   },
           { label: 'Borrar',   action: onBorrar, danger: true },
