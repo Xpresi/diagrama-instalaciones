@@ -28,7 +28,7 @@ const nodeTypes = {
   olas:       OlasNode,
 }
 
-export default function Canvas({ onInit, edgeTypes, conectandoDesde, onConectarCompletado }) {
+export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado }) {
   const { state, dispatch } = useSchema()
 
   const onNodesChange = useCallback(changes => {
@@ -40,17 +40,23 @@ export default function Canvas({ onInit, edgeTypes, conectandoDesde, onConectarC
   }, [state.edges, dispatch])
 
   const onConnect = useCallback(connection => {
-    const edge = { ...connection, id: `edge-${Date.now()}`, type: 'ramal' }
+    const edge = { ...connection, id: `edge-${Date.now()}`, type: 'ramal', data: edgeData || {} }
     dispatch({ type: 'ADD_EDGE', payload: edge })
-  }, [dispatch])
+  }, [dispatch, edgeData])
 
   const onNodeClick = useCallback((_e, node) => {
     if (conectandoDesde && conectandoDesde !== node.id) {
-      const edge = { source: conectandoDesde, target: node.id, id: `edge-${Date.now()}`, type: 'ramal' }
+      const edge = {
+        source: conectandoDesde.endsWith('-mid') ? conectandoDesde.replace('-mid', '').replace('edge-', '') : conectandoDesde,
+        target: node.id,
+        id: `edge-${Date.now()}`,
+        type: 'ramal',
+        data: { ...edgeData, ramal: conectandoDesde.endsWith('-mid') ? conectandoDesde.replace('-mid', '') : null },
+      }
       dispatch({ type: 'ADD_EDGE', payload: edge })
       onConectarCompletado?.()
     }
-  }, [conectandoDesde, dispatch, onConectarCompletado])
+  }, [conectandoDesde, dispatch, onConectarCompletado, edgeData])
 
   return (
     <div className="w-full h-full">

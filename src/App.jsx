@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import './index.css'
 import { SchemaProvider, useSchema } from './store/SchemaContext'
 import { GRID_SIZE } from './constants/tiposInstalacion'
@@ -9,6 +9,7 @@ import ModalCodigo from './components/ModalCodigo'
 import MenuContextual from './components/MenuContextual'
 import FichaInstalacion from './components/FichaInstalacion'
 import ConfirmDialog from './components/ConfirmDialog'
+import RamalEdge from './edges/RamalEdge'
 
 function AppContent() {
   const { state, dispatch } = useSchema()
@@ -19,6 +20,7 @@ function AppContent() {
   const [fichaNodeId, setFichaNodeId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
+  const [menuRamal, setMenuRamal] = useState(null) // { edgeId, x, y }
 
   const handleLongPress = useCallback((nodeId, e) => {
     const touch = e.touches?.[0] || e
@@ -29,9 +31,20 @@ function AppContent() {
     setFichaNodeId(nodeId)
   }, [])
 
+  const handleEdgeLongPress = useCallback((edgeId, e) => {
+    const touch = e.touches?.[0] || e
+    setMenuRamal({ edgeId, x: touch.clientX, y: touch.clientY })
+  }, [])
+
   function buildNodeHandlers() {
     return { onLongPressId: handleLongPress, onDoubleTapId: handleDoubleTap }
   }
+
+  function buildEdgeHandlers() {
+    return { onLongPressMid: handleEdgeLongPress }
+  }
+
+  const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
 
   function handleSelectTipo(tipo) {
     setTipoSeleccionado(tipo)
@@ -77,6 +90,8 @@ function AppContent() {
     <div className="w-screen h-screen bg-slate-900 overflow-hidden relative pt-14">
       <Canvas
         onInit={setRfInstance}
+        edgeTypes={edgeTypes}
+        edgeData={buildEdgeHandlers()}
         conectandoDesde={conectandoDesde}
         onConectarCompletado={() => setConectandoDesde(null)}
       />
@@ -117,6 +132,28 @@ function AppContent() {
           onConfirm={confirmarBorrado}
           onCancel={() => setConfirmId(null)}
         />
+      )}
+      {menuRamal && (
+        <div className="fixed inset-0 z-50" onClick={() => setMenuRamal(null)}>
+          <div
+            className="absolute bg-slate-800 rounded-2xl shadow-xl overflow-hidden w-48"
+            style={{
+              left: Math.min(menuRamal.x, window.innerWidth - 200),
+              top: Math.min(menuRamal.y, window.innerHeight - 100),
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="w-full text-left px-4 py-3 text-sm text-white hover:bg-slate-700"
+              onClick={() => {
+                setConectandoDesde(`${menuRamal.edgeId}-mid`)
+                setMenuRamal(null)
+              }}
+            >
+              Crear ramal
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
