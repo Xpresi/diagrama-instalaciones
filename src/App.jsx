@@ -23,29 +23,45 @@ function AppContent() {
   const [fichaNodeId, setFichaNodeId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
-  const [menuRamal, setMenuRamal] = useState(null)
+  const [menuMid, setMenuMid] = useState(null)     // { edgeId, x, y }
   const [mostrarMenu, setMostrarMenu] = useState(false)
 
-  const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
-
-  const handleEdgeLongPress = useCallback((edgeId, e) => {
-    const touch = e.touches?.[0] || e
-    setMenuRamal({ edgeId, x: touch.clientX, y: touch.clientY })
-  }, [])
+  // Toque en el punto medio de una conexión
+  const handleMidTap = useCallback((edgeId, midX, midY, e) => {
+    if (conectandoDesde) {
+      // El punto medio es el destino: crear ramal
+      dispatch({
+        type: 'ADD_EDGE',
+        payload: {
+          source: conectandoDesde,
+          target: edgeId + '-mid',
+          id: `edge-${Date.now()}`,
+          type: 'ramal',
+          data: { ramal: edgeId, onMidTap: handleMidTap, conectandoDesde: null },
+        },
+      })
+      setConectandoDesde(null)
+      return
+    }
+    // Obtener coordenadas de pantalla desde el evento
+    const clientX = e?.nativeEvent?.clientX ?? e?.clientX ?? midX
+    const clientY = e?.nativeEvent?.clientY ?? e?.clientY ?? midY
+    setMenuMid({ edgeId, x: clientX, y: clientY })
+  }, [conectandoDesde, dispatch])
 
   function buildEdgeHandlers() {
-    return { onLongPressMid: handleEdgeLongPress }
+    return { onMidTap: handleMidTap, conectandoDesde }
   }
 
+  const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
   const { exportar, importar } = useExportImport(state, dispatch)
 
-  // Un toque → menú contextual
   const handleNodeSingleTap = useCallback((nodeId, e) => {
+    if (conectandoDesde) return // Canvas.jsx ya gestiona esto
     const touch = e.nativeEvent?.changedTouches?.[0] || e.nativeEvent || e
     setMenu({ nodeId, x: touch.clientX ?? touch.pageX ?? window.innerWidth / 2, y: touch.clientY ?? touch.pageY ?? window.innerHeight / 2 })
-  }, [])
+  }, [conectandoDesde])
 
-  // Dos toques → ficha
   const handleNodeDoubleTap = useCallback((nodeId) => {
     setFichaNodeId(nodeId)
   }, [])
@@ -60,15 +76,12 @@ function AppContent() {
     const viewport = rfInstance?.getViewport() || { x: 0, y: 0, zoom: 1 }
     const centerX = (window.innerWidth / 2 - viewport.x) / viewport.zoom
     const centerY = (window.innerHeight / 2 - viewport.y) / viewport.zoom
-    const snappedX = Math.round(centerX / GRID_SIZE) * GRID_SIZE
-    const snappedY = Math.round(centerY / GRID_SIZE) * GRID_SIZE
-
     dispatch({
       type: 'ADD_NODE',
       payload: {
         id,
         type: tipoSeleccionado.forma,
-        position: { x: snappedX, y: snappedY },
+        position: { x: Math.round(centerX / GRID_SIZE) * GRID_SIZE, y: Math.round(centerY / GRID_SIZE) * GRID_SIZE },
         data: { id, tipo: tipoSeleccionado.tipo, nombre: '', valorMin: null, valorMax: null, cl: null, notas: '' },
       },
     })
@@ -87,6 +100,13 @@ function AppContent() {
     }
   }
 
+  // Sincronizar conectandoDesde en los edges cuando cambia
+  const nodesWithHandlers = state.nodes
+  const edgesWithHandlers = useMemo(() =>
+    state.edges.map(e => ({ ...e, data: { ...e.data, onMidTap: handleMidTap, conectandoDesde } })),
+    [state.edges, handleMidTap, conectandoDesde]
+  )
+
   return (
     <div className="w-screen h-screen bg-slate-900 overflow-hidden relative pt-14">
       <Toolbar onBuscarSelect={handleBuscarSelect} onMenuClick={() => setMostrarMenu(true)} />
@@ -94,6 +114,7 @@ function AppContent() {
         onInit={setRfInstance}
         edgeTypes={edgeTypes}
         edgeData={buildEdgeHandlers()}
+        edges={edgesWithHandlers}
         conectandoDesde={conectandoDesde}
         onConectarCompletado={() => setConectandoDesde(null)}
         onNodeSingleTap={handleNodeSingleTap}
@@ -103,7 +124,7 @@ function AppContent() {
       {conectandoDesde && (
         <div className="fixed top-16 left-0 right-0 z-30 flex justify-center pointer-events-none">
           <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
-            Pulsa la instalación destino
+            Pulsa instalación o punto medio destino
           </span>
         </div>
       )}
@@ -127,6 +148,28 @@ function AppContent() {
           onClose={() => setMenu(null)}
         />
       )}
+      {menuMid && (
+        <div className="fixed inset-0 z-50" onClick={() => setMenuMid(null)}>
+          <div
+            className="absolute bg-slate-800 rounded-2xl shadow-xl overflow-hidden w-48"
+            style={{ left: Math.min(menuMid.x, window.innerWidth - 200), top: Math.min(menuMid.y, window.innerHeight - 120) }}
+            onClick={e => e.stopPropagation()}
+          >
+            {[
+              { label: 'Conectar desde aquí', action: () => { setConectandoDesde(menuMid.edgeId + '-mid'); setMenuMid(null) } },
+              { label: 'Eliminar conexión',   action: () => { dispatch({ type: 'DELETE_EDGE', payload: menuMid.edgeId }); setMenuMid(null) }, danger: true },
+            ].map(item => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className={`w-full text-left px-4 py-3 text-sm border-b border-slate-700 last:border-0 hover:bg-slate-700 ${item.danger ? 'text-red-400' : 'text-white'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {fichaNodeId && (
         <FichaInstalacion nodeId={fichaNodeId} onClose={() => setFichaNodeId(null)} />
       )}
@@ -143,25 +186,6 @@ function AppContent() {
           onConfirm={confirmarBorrado}
           onCancel={() => setConfirmId(null)}
         />
-      )}
-      {menuRamal && (
-        <div className="fixed inset-0 z-50" onClick={() => setMenuRamal(null)}>
-          <div
-            className="absolute bg-slate-800 rounded-2xl shadow-xl overflow-hidden w-48"
-            style={{
-              left: Math.min(menuRamal.x, window.innerWidth - 200),
-              top: Math.min(menuRamal.y, window.innerHeight - 100),
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              className="w-full text-left px-4 py-3 text-sm text-white hover:bg-slate-700"
-              onClick={() => { setConectandoDesde(`${menuRamal.edgeId}-mid`); setMenuRamal(null) }}
-            >
-              Crear ramal
-            </button>
-          </div>
-        </div>
       )}
     </div>
   )

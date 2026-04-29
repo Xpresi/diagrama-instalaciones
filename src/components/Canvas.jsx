@@ -30,8 +30,9 @@ const nodeTypes = {
   rejilla:    RejillaNode,
 }
 
-export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado, onNodeSingleTap, onNodeDoubleTap }) {
+export default function Canvas({ onInit, edgeTypes, edgeData, edges: edgesOverride, conectandoDesde, onConectarCompletado, onNodeSingleTap, onNodeDoubleTap }) {
   const { state, dispatch } = useSchema()
+  const edges = edgesOverride ?? state.edges
   const lastTap = useRef({ nodeId: null, time: 0, timer: null })
 
   const onNodesChange = useCallback(changes => {
@@ -85,7 +86,7 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
     <div className="w-full h-full">
       <ReactFlow
         nodes={state.nodes}
-        edges={state.edges}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
