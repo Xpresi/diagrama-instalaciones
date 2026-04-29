@@ -11,6 +11,8 @@ import FichaInstalacion from './components/FichaInstalacion'
 import ConfirmDialog from './components/ConfirmDialog'
 import RamalEdge from './edges/RamalEdge'
 import Toolbar from './components/Toolbar'
+import MenuPrincipal from './components/MenuPrincipal'
+import { useExportImport } from './hooks/useExportImport'
 
 function AppContent() {
   const { state, dispatch } = useSchema()
@@ -47,6 +49,7 @@ function AppContent() {
   }
 
   const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
+  const { exportar, importar } = useExportImport(state, dispatch)
 
   function handleSelectTipo(tipo) {
     setTipoSeleccionado(tipo)
@@ -135,6 +138,13 @@ function AppContent() {
       )}
       {fichaNodeId && (
         <FichaInstalacion nodeId={fichaNodeId} onClose={() => setFichaNodeId(null)} />
+      )}
+      {mostrarMenu && (
+        <MenuPrincipal
+          onGuardar={exportar}
+          onCargar={(file) => importar(file, buildNodeHandlers(), buildEdgeHandlers())}
+          onClose={() => setMostrarMenu(false)}
+        />
       )}
       {confirmId && (
         <ConfirmDialog
