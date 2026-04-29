@@ -7,7 +7,7 @@ function tipoForma(tipo) {
 
 export function useExportImport(state, dispatch) {
 
-  function exportar() {
+  async function exportar() {
     const schema = {
       instalaciones: state.nodes.map(n => ({
         id: n.id,
@@ -29,13 +29,30 @@ export function useExportImport(state, dispatch) {
         ramal: e.data?.ramal ?? null,
       })),
     }
-    const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `diagrama-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    const json = JSON.stringify(schema, null, 2)
+
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: 'diagrama.json',
+          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+        })
+        const writable = await handle.createWritable()
+        await writable.write(json)
+        await writable.close()
+      } catch (e) {
+        if (e.name !== 'AbortError') alert('Error al guardar el fichero.')
+      }
+    } else {
+      // Fallback para navegadores sin File System Access API
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'diagrama.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    }
   }
 
   function importar(file, nodeHandlers, edgeHandlers) {
