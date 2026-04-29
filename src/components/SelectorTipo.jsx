@@ -16,7 +16,6 @@ export default function SelectorTipo({ onSelect, onClose }) {
               className="bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white rounded-xl p-4 text-left"
             >
               <span className="font-bold text-blue-300">{t.prefijo}</span>
-              <span className="text-slate-300 text-sm ml-2">{t.label.split('–')[1]?.trim()}</span>
             </button>
           ))}
         </div>
