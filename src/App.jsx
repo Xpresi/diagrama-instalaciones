@@ -19,52 +19,75 @@ function AppContent() {
   const [mostrarSelector, setMostrarSelector] = useState(false)
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null)
   const [rfInstance, setRfInstance] = useState(null)
-  const [menu, setMenu] = useState(null)           // { nodeId, x, y }
+  const [menu, setMenu] = useState(null)
   const [fichaNodeId, setFichaNodeId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
-  const [menuMid, setMenuMid] = useState(null)     // { edgeId, x, y }
+  const [menuMid, setMenuMid] = useState(null)   // { edgeId, flowX, flowY }
   const [mostrarMenu, setMostrarMenu] = useState(false)
-
-  // Toque en el punto medio de una conexión
-  const handleMidTap = useCallback((edgeId, midX, midY, e) => {
-    if (conectandoDesde) {
-      // El punto medio es el destino: crear ramal
-      dispatch({
-        type: 'ADD_EDGE',
-        payload: {
-          source: conectandoDesde,
-          target: edgeId + '-mid',
-          id: `edge-${Date.now()}`,
-          type: 'ramal',
-          data: { ramal: edgeId, onMidTap: handleMidTap, conectandoDesde: null },
-        },
-      })
-      setConectandoDesde(null)
-      return
-    }
-    // Obtener coordenadas de pantalla desde el evento
-    const clientX = e?.nativeEvent?.clientX ?? e?.clientX ?? midX
-    const clientY = e?.nativeEvent?.clientY ?? e?.clientY ?? midY
-    setMenuMid({ edgeId, x: clientX, y: clientY })
-  }, [conectandoDesde, dispatch])
-
-  function buildEdgeHandlers() {
-    return { onMidTap: handleMidTap, conectandoDesde }
-  }
 
   const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
   const { exportar, importar } = useExportImport(state, dispatch)
 
+  // Crea un nodo de unión en el punto medio, parte la arista en dos
+  function crearUnionEnMedio(edgeId, flowX, flowY) {
+    const edge = state.edges.find(e => e.id === edgeId)
+    if (!edge) return null
+    const unionId = `union-${Date.now()}`
+    dispatch({ type: 'DELETE_EDGE', payload: edgeId })
+    dispatch({ type: 'ADD_NODE', payload: {
+      id: unionId,
+      type: 'union',
+      position: { x: flowX - 8, y: flowY - 8 },
+      data: { id: unionId, tipo: 0 },
+    }})
+    dispatch({ type: 'ADD_EDGE', payload: { id: `edge-${Date.now()}-a`, source: edge.source, target: unionId, type: 'ramal', data: {} }})
+    dispatch({ type: 'ADD_EDGE', payload: { id: `edge-${Date.now()}-b`, source: unionId, target: edge.target, type: 'ramal', data: {} }})
+    return unionId
+  }
+
+  const handleMidTap = useCallback((edgeId, flowX, flowY, screenX, screenY) => {
+    if (conectandoDesde) {
+      const unionId = crearUnionEnMedio(edgeId, flowX, flowY)
+      if (unionId) {
+        dispatch({ type: 'ADD_EDGE', payload: {
+          id: `edge-${Date.now()}`,
+          source: conectandoDesde,
+          target: unionId,
+          type: 'ramal',
+          data: {},
+        }})
+        setConectandoDesde(null)
+      }
+      return
+    }
+    setMenuMid({ edgeId, flowX, flowY, screenX, screenY })
+  }, [conectandoDesde, state.edges])
+
+  const edgesWithHandlers = useMemo(() =>
+    state.edges.map(e => ({ ...e, data: { ...e.data, onMidTap: handleMidTap, conectandoDesde } })),
+    [state.edges, handleMidTap, conectandoDesde]
+  )
+
   const handleNodeSingleTap = useCallback((nodeId, e) => {
-    if (conectandoDesde) return // Canvas.jsx ya gestiona esto
+    if (conectandoDesde) return
+    // Nodos de unión: un toque inicia conexión directamente (sin menú)
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (node?.type === 'union') {
+      setConectandoDesde(nodeId)
+      return
+    }
     const touch = e.nativeEvent?.changedTouches?.[0] || e.nativeEvent || e
-    setMenu({ nodeId, x: touch.clientX ?? touch.pageX ?? window.innerWidth / 2, y: touch.clientY ?? touch.pageY ?? window.innerHeight / 2 })
-  }, [conectandoDesde])
+    const x = touch.clientX ?? touch.pageX ?? window.innerWidth / 2
+    const y = touch.clientY ?? touch.pageY ?? window.innerHeight / 2
+    setMenu({ nodeId, x, y })
+  }, [conectandoDesde, state.nodes])
 
   const handleNodeDoubleTap = useCallback((nodeId) => {
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (node?.type === 'union') return
     setFichaNodeId(nodeId)
-  }, [])
+  }, [state.nodes])
 
   function handleSelectTipo(tipo) {
     setTipoSeleccionado(tipo)
@@ -100,20 +123,12 @@ function AppContent() {
     }
   }
 
-  // Sincronizar conectandoDesde en los edges cuando cambia
-  const nodesWithHandlers = state.nodes
-  const edgesWithHandlers = useMemo(() =>
-    state.edges.map(e => ({ ...e, data: { ...e.data, onMidTap: handleMidTap, conectandoDesde } })),
-    [state.edges, handleMidTap, conectandoDesde]
-  )
-
   return (
     <div className="w-screen h-screen bg-slate-900 overflow-hidden relative pt-14">
       <Toolbar onBuscarSelect={handleBuscarSelect} onMenuClick={() => setMostrarMenu(true)} />
       <Canvas
         onInit={setRfInstance}
         edgeTypes={edgeTypes}
-        edgeData={buildEdgeHandlers()}
         edges={edgesWithHandlers}
         conectandoDesde={conectandoDesde}
         onConectarCompletado={() => setConectandoDesde(null)}
@@ -151,13 +166,24 @@ function AppContent() {
       {menuMid && (
         <div className="fixed inset-0 z-50" onClick={() => setMenuMid(null)}>
           <div
-            className="absolute bg-slate-800 rounded-2xl shadow-xl overflow-hidden w-48"
-            style={{ left: Math.min(menuMid.x, window.innerWidth - 200), top: Math.min(menuMid.y, window.innerHeight - 120) }}
+            className="absolute bg-slate-800 rounded-2xl shadow-xl overflow-hidden w-52"
+            style={{ left: Math.min(menuMid.screenX ?? window.innerWidth / 2, window.innerWidth - 220), top: Math.min(menuMid.screenY ?? window.innerHeight / 2, window.innerHeight - 120) }}
             onClick={e => e.stopPropagation()}
           >
             {[
-              { label: 'Conectar desde aquí', action: () => { setConectandoDesde(menuMid.edgeId + '-mid'); setMenuMid(null) } },
-              { label: 'Eliminar conexión',   action: () => { dispatch({ type: 'DELETE_EDGE', payload: menuMid.edgeId }); setMenuMid(null) }, danger: true },
+              {
+                label: 'Conectar desde aquí',
+                action: () => {
+                  const unionId = crearUnionEnMedio(menuMid.edgeId, menuMid.flowX, menuMid.flowY)
+                  if (unionId) setConectandoDesde(unionId)
+                  setMenuMid(null)
+                },
+              },
+              {
+                label: 'Eliminar conexión',
+                action: () => { dispatch({ type: 'DELETE_EDGE', payload: menuMid.edgeId }); setMenuMid(null) },
+                danger: true,
+              },
             ].map(item => (
               <button
                 key={item.label}
@@ -176,7 +202,7 @@ function AppContent() {
       {mostrarMenu && (
         <MenuPrincipal
           onGuardar={exportar}
-          onCargar={(file) => importar(file, {}, buildEdgeHandlers())}
+          onCargar={(file) => importar(file, {}, {})}
           onClose={() => setMostrarMenu(false)}
         />
       )}

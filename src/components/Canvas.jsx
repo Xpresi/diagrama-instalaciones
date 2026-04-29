@@ -17,6 +17,7 @@ import RelojArenaNode from '../nodes/RelojArenaNode'
 import SolNode        from '../nodes/SolNode'
 import OlasNode       from '../nodes/OlasNode'
 import RejillaNode    from '../nodes/RejillaNode'
+import UnionNode      from '../nodes/UnionNode'
 
 const nodeTypes = {
   circulo:    CirculoNode,
@@ -28,6 +29,7 @@ const nodeTypes = {
   sol:        SolNode,
   olas:       OlasNode,
   rejilla:    RejillaNode,
+  union:      UnionNode,
 }
 
 export default function Canvas({ onInit, edgeTypes, edgeData, edges: edgesOverride, conectandoDesde, onConectarCompletado, onNodeSingleTap, onNodeDoubleTap }) {

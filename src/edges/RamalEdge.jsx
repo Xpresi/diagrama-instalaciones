@@ -4,10 +4,12 @@ export default function RamalEdge({ id, sourceX, sourceY, targetX, targetY, data
   const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY })
   const midX = (sourceX + targetX) / 2
   const midY = (sourceY + targetY) / 2
+  const active = !!data?.conectandoDesde
 
   function handleClick(e) {
     e.stopPropagation()
-    data?.onMidTap?.(id, midX, midY, e)
+    e.preventDefault()
+    data?.onMidTap?.(id, midX, midY, e.clientX, e.clientY)
   }
 
   return (
@@ -17,12 +19,11 @@ export default function RamalEdge({ id, sourceX, sourceY, targetX, targetY, data
         cx={midX}
         cy={midY}
         r={10}
-        fill={data?.conectandoDesde ? '#3b82f6' : '#1e293b'}
-        stroke={data?.conectandoDesde ? '#93c5fd' : '#94a3b8'}
+        fill={active ? '#3b82f6' : '#1e293b'}
+        stroke={active ? '#93c5fd' : '#94a3b8'}
         strokeWidth="2"
         style={{ cursor: 'pointer' }}
         onClick={handleClick}
-        onTouchEnd={handleClick}
       />
     </>
   )
