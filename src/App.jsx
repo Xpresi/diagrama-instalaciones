@@ -23,34 +23,32 @@ function AppContent() {
   const [fichaNodeId, setFichaNodeId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
-  const [moviendoNodeId, setMoviendoNodeId] = useState(null)
-  const [menuRamal, setMenuRamal] = useState(null) // { edgeId, x, y }
+  const [menuRamal, setMenuRamal] = useState(null)
   const [mostrarMenu, setMostrarMenu] = useState(false)
 
-  const handleLongPress = useCallback((nodeId, e) => {
-    const touch = e.touches?.[0] || e
-    setMenu({ nodeId, x: touch.clientX, y: touch.clientY })
-  }, [])
-
-  const handleDoubleTap = useCallback((nodeId) => {
-    setFichaNodeId(nodeId)
-  }, [])
+  const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
 
   const handleEdgeLongPress = useCallback((edgeId, e) => {
     const touch = e.touches?.[0] || e
     setMenuRamal({ edgeId, x: touch.clientX, y: touch.clientY })
   }, [])
 
-  function buildNodeHandlers() {
-    return { onLongPressId: handleLongPress, onDoubleTapId: handleDoubleTap }
-  }
-
   function buildEdgeHandlers() {
     return { onLongPressMid: handleEdgeLongPress }
   }
 
-  const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
   const { exportar, importar } = useExportImport(state, dispatch)
+
+  // Un toque → menú contextual
+  const handleNodeSingleTap = useCallback((nodeId, e) => {
+    const touch = e.nativeEvent?.changedTouches?.[0] || e.nativeEvent || e
+    setMenu({ nodeId, x: touch.clientX ?? touch.pageX ?? window.innerWidth / 2, y: touch.clientY ?? touch.pageY ?? window.innerHeight / 2 })
+  }, [])
+
+  // Dos toques → ficha
+  const handleNodeDoubleTap = useCallback((nodeId) => {
+    setFichaNodeId(nodeId)
+  }, [])
 
   function handleSelectTipo(tipo) {
     setTipoSeleccionado(tipo)
@@ -65,35 +63,21 @@ function AppContent() {
     const snappedX = Math.round(centerX / GRID_SIZE) * GRID_SIZE
     const snappedY = Math.round(centerY / GRID_SIZE) * GRID_SIZE
 
-    const node = {
-      id,
-      type: tipoSeleccionado.forma,
-      position: { x: snappedX, y: snappedY },
-      data: { id, tipo: tipoSeleccionado.tipo, nombre: '', valorMin: null, valorMax: null, cl: null, notas: '', ...buildNodeHandlers() },
-    }
-    dispatch({ type: 'ADD_NODE', payload: node })
+    dispatch({
+      type: 'ADD_NODE',
+      payload: {
+        id,
+        type: tipoSeleccionado.forma,
+        position: { x: snappedX, y: snappedY },
+        data: { id, tipo: tipoSeleccionado.tipo, nombre: '', valorMin: null, valorMax: null, cl: null, notas: '' },
+      },
+    })
     setTipoSeleccionado(null)
-  }
-
-  function handleConectar() {
-    setConectandoDesde(menu.nodeId)
-  }
-
-  function handleMover() {
-    setMoviendoNodeId(menu.nodeId)
   }
 
   function confirmarBorrado() {
     dispatch({ type: 'DELETE_NODE', payload: confirmId })
     setConfirmId(null)
-  }
-
-  // Cuando se carga un esquema desde JSON, los nodos necesitan los handlers actualizados
-  function refreshNodeHandlers(nodes) {
-    return nodes.map(n => ({
-      ...n,
-      data: { ...n.data, ...buildNodeHandlers() },
-    }))
   }
 
   function handleBuscarSelect(nodeId) {
@@ -112,14 +96,14 @@ function AppContent() {
         edgeData={buildEdgeHandlers()}
         conectandoDesde={conectandoDesde}
         onConectarCompletado={() => setConectandoDesde(null)}
-        moviendoNodeId={moviendoNodeId}
-        onMoverCompletado={() => setMoviendoNodeId(null)}
+        onNodeSingleTap={handleNodeSingleTap}
+        onNodeDoubleTap={handleNodeDoubleTap}
       />
       <BotonAnadir onClick={() => setMostrarSelector(true)} />
-      {(conectandoDesde || moviendoNodeId) && (
+      {conectandoDesde && (
         <div className="fixed top-16 left-0 right-0 z-30 flex justify-center pointer-events-none">
           <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
-            {conectandoDesde ? 'Pulsa la instalación destino' : 'Pulsa en el canvas donde moverlo'}
+            Pulsa la instalación destino
           </span>
         </div>
       )}
@@ -137,8 +121,7 @@ function AppContent() {
         <MenuContextual
           x={menu.x}
           y={menu.y}
-          onMover={handleMover}
-          onConectar={handleConectar}
+          onConectar={() => setConectandoDesde(menu.nodeId)}
           onEditar={() => setFichaNodeId(menu.nodeId)}
           onBorrar={() => setConfirmId(menu.nodeId)}
           onClose={() => setMenu(null)}
@@ -150,7 +133,7 @@ function AppContent() {
       {mostrarMenu && (
         <MenuPrincipal
           onGuardar={exportar}
-          onCargar={(file) => importar(file, buildNodeHandlers(), buildEdgeHandlers())}
+          onCargar={(file) => importar(file, {}, buildEdgeHandlers())}
           onClose={() => setMostrarMenu(false)}
         />
       )}
@@ -173,10 +156,7 @@ function AppContent() {
           >
             <button
               className="w-full text-left px-4 py-3 text-sm text-white hover:bg-slate-700"
-              onClick={() => {
-                setConectandoDesde(`${menuRamal.edgeId}-mid`)
-                setMenuRamal(null)
-              }}
+              onClick={() => { setConectandoDesde(`${menuRamal.edgeId}-mid`); setMenuRamal(null) }}
             >
               Crear ramal
             </button>

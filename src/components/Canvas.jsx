@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import {
   ReactFlow, Background, BackgroundVariant,
   applyNodeChanges, applyEdgeChanges,
@@ -30,8 +30,9 @@ const nodeTypes = {
   rejilla:    RejillaNode,
 }
 
-export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado, moviendoNodeId, onMoverCompletado }) {
+export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado, onNodeSingleTap, onNodeDoubleTap }) {
   const { state, dispatch } = useSchema()
+  const lastTap = useRef({ nodeId: null, time: 0, timer: null })
 
   const onNodesChange = useCallback(changes => {
     dispatch({ type: 'SET_NODES', payload: applyNodeChanges(changes, state.nodes) })
@@ -46,34 +47,39 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
     dispatch({ type: 'ADD_EDGE', payload: edge })
   }, [dispatch, edgeData])
 
-  const onNodeClick = useCallback((_e, node) => {
+  const onNodeClick = useCallback((e, node) => {
+    // Modo conectar: el toque selecciona el destino directamente
     if (conectandoDesde && conectandoDesde !== node.id) {
       const edge = {
-        source: conectandoDesde.endsWith('-mid') ? conectandoDesde.replace('-mid', '').replace('edge-', '') : conectandoDesde,
+        source: conectandoDesde.endsWith('-mid') ? conectandoDesde.replace('-mid', '') : conectandoDesde,
         target: node.id,
         id: `edge-${Date.now()}`,
         type: 'ramal',
-        data: { ...edgeData, ramal: conectandoDesde.endsWith('-mid') ? conectandoDesde.replace('-mid', '') : null },
+        data: { ...edgeData, ramal: conectandoDesde.endsWith('-mid') ? conectandoDesde : null },
       }
       dispatch({ type: 'ADD_EDGE', payload: edge })
       onConectarCompletado?.()
+      return
     }
-  }, [conectandoDesde, dispatch, onConectarCompletado, edgeData])
 
-  const onPaneClick = useCallback((e) => {
-    if (!moviendoNodeId) return
-    // Convertir coordenadas de pantalla a coordenadas del canvas
-    const bounds = e.currentTarget?.getBoundingClientRect?.() || { left: 0, top: 0 }
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0
-    const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0
-    const flowPos = { x: clientX - bounds.left, y: clientY - bounds.top }
-    // React Flow expone screenToFlowPosition si tenemos la instancia, pero podemos usar la posición del evento
-    // El evento onPaneClick de React Flow ya trae position en coordenadas del canvas
-    const x = Math.round((e.position?.x ?? flowPos.x) / GRID_SIZE) * GRID_SIZE
-    const y = Math.round((e.position?.y ?? flowPos.y) / GRID_SIZE) * GRID_SIZE
-    dispatch({ type: 'UPDATE_NODE', payload: { id: moviendoNodeId, changes: { position: { x, y } } } })
-    onMoverCompletado?.()
-  }, [moviendoNodeId, dispatch, onMoverCompletado])
+    const now = Date.now()
+    const prev = lastTap.current
+
+    if (prev.nodeId === node.id && now - prev.time < 350) {
+      // Doble toque
+      clearTimeout(prev.timer)
+      lastTap.current = { nodeId: null, time: 0, timer: null }
+      onNodeDoubleTap?.(node.id)
+    } else {
+      // Primer toque — esperar si viene un segundo
+      clearTimeout(prev.timer)
+      const timer = setTimeout(() => {
+        lastTap.current = { nodeId: null, time: 0, timer: null }
+        onNodeSingleTap?.(node.id, e)
+      }, 350)
+      lastTap.current = { nodeId: node.id, time: now, timer }
+    }
+  }, [conectandoDesde, dispatch, onConectarCompletado, edgeData, onNodeSingleTap, onNodeDoubleTap])
 
   return (
     <div className="w-full h-full">
@@ -84,7 +90,6 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         snapToGrid={true}
@@ -92,7 +97,7 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
         fitView
         panOnScroll={false}
         zoomOnPinch={true}
-        panOnDrag={!conectandoDesde && !moviendoNodeId}
+        panOnDrag={!conectandoDesde}
         selectionOnDrag={false}
         onInit={onInit}
       >
