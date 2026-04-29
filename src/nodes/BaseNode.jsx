@@ -38,10 +38,16 @@ export default function BaseNode({ id, data, selected, children }) {
       </span>
       <div className="relative">
         {children}
-        <Handle type="target" position={Position.Top}    className="!w-2 !h-2 !bg-blue-400" />
-        <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-blue-400" />
-        <Handle type="target" position={Position.Left}   className="!w-2 !h-2 !bg-blue-400" />
-        <Handle type="source" position={Position.Right}  className="!w-2 !h-2 !bg-blue-400" />
+        <Handle
+          type="source"
+          position={Position.Top}
+          style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 1, height: 1, minWidth: 1, minHeight: 1 }}
+        />
+        <Handle
+          type="target"
+          position={Position.Top}
+          style={{ opacity: 0, top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 1, height: 1, minWidth: 1, minHeight: 1 }}
+        />
       </div>
     </div>
   )
