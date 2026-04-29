@@ -28,7 +28,7 @@ const nodeTypes = {
   olas:       OlasNode,
 }
 
-export default function Canvas({ onInit, edgeTypes }) {
+export default function Canvas({ onInit, edgeTypes, conectandoDesde, onConectarCompletado }) {
   const { state, dispatch } = useSchema()
 
   const onNodesChange = useCallback(changes => {
@@ -44,6 +44,14 @@ export default function Canvas({ onInit, edgeTypes }) {
     dispatch({ type: 'ADD_EDGE', payload: edge })
   }, [dispatch])
 
+  const onNodeClick = useCallback((_e, node) => {
+    if (conectandoDesde && conectandoDesde !== node.id) {
+      const edge = { source: conectandoDesde, target: node.id, id: `edge-${Date.now()}`, type: 'ramal' }
+      dispatch({ type: 'ADD_EDGE', payload: edge })
+      onConectarCompletado?.()
+    }
+  }, [conectandoDesde, dispatch, onConectarCompletado])
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -52,6 +60,7 @@ export default function Canvas({ onInit, edgeTypes }) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         snapToGrid={true}
@@ -59,7 +68,7 @@ export default function Canvas({ onInit, edgeTypes }) {
         fitView
         panOnScroll={false}
         zoomOnPinch={true}
-        panOnDrag={true}
+        panOnDrag={!conectandoDesde}
         selectionOnDrag={false}
         onInit={onInit}
       >

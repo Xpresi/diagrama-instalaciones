@@ -6,29 +6,31 @@ import Canvas from './components/Canvas'
 import BotonAnadir from './components/BotonAnadir'
 import SelectorTipo from './components/SelectorTipo'
 import ModalCodigo from './components/ModalCodigo'
+import MenuContextual from './components/MenuContextual'
+import FichaInstalacion from './components/FichaInstalacion'
+import ConfirmDialog from './components/ConfirmDialog'
 
 function AppContent() {
   const { state, dispatch } = useSchema()
   const [mostrarSelector, setMostrarSelector] = useState(false)
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null)
   const [rfInstance, setRfInstance] = useState(null)
+  const [menu, setMenu] = useState(null)           // { nodeId, x, y }
+  const [fichaNodeId, setFichaNodeId] = useState(null)
+  const [confirmId, setConfirmId] = useState(null)
+  const [conectandoDesde, setConectandoDesde] = useState(null)
 
   const handleLongPress = useCallback((nodeId, e) => {
     const touch = e.touches?.[0] || e
-    console.log('longpress', nodeId, touch.clientX, touch.clientY)
-    // será expandido en Task 6
+    setMenu({ nodeId, x: touch.clientX, y: touch.clientY })
   }, [])
 
   const handleDoubleTap = useCallback((nodeId) => {
-    console.log('doubletap', nodeId)
-    // será expandido en Task 6
+    setFichaNodeId(nodeId)
   }, [])
 
   function buildNodeHandlers() {
-    return {
-      onLongPressId: handleLongPress,
-      onDoubleTapId: handleDoubleTap,
-    }
+    return { onLongPressId: handleLongPress, onDoubleTapId: handleDoubleTap }
   }
 
   function handleSelectTipo(tipo) {
@@ -48,25 +50,44 @@ function AppContent() {
       id,
       type: tipoSeleccionado.forma,
       position: { x: snappedX, y: snappedY },
-      data: {
-        id,
-        tipo: tipoSeleccionado.tipo,
-        nombre: '',
-        valorMin: null,
-        valorMax: null,
-        cl: null,
-        notas: '',
-        ...buildNodeHandlers(),
-      },
+      data: { id, tipo: tipoSeleccionado.tipo, nombre: '', valorMin: null, valorMax: null, cl: null, notas: '', ...buildNodeHandlers() },
     }
     dispatch({ type: 'ADD_NODE', payload: node })
     setTipoSeleccionado(null)
   }
 
+  function handleConectar() {
+    setConectandoDesde(menu.nodeId)
+  }
+
+  function confirmarBorrado() {
+    dispatch({ type: 'DELETE_NODE', payload: confirmId })
+    setConfirmId(null)
+  }
+
+  // Cuando se carga un esquema desde JSON, los nodos necesitan los handlers actualizados
+  function refreshNodeHandlers(nodes) {
+    return nodes.map(n => ({
+      ...n,
+      data: { ...n.data, ...buildNodeHandlers() },
+    }))
+  }
+
   return (
     <div className="w-screen h-screen bg-slate-900 overflow-hidden relative pt-14">
-      <Canvas onInit={setRfInstance} />
+      <Canvas
+        onInit={setRfInstance}
+        conectandoDesde={conectandoDesde}
+        onConectarCompletado={() => setConectandoDesde(null)}
+      />
       <BotonAnadir onClick={() => setMostrarSelector(true)} />
+      {conectandoDesde && (
+        <div className="fixed top-16 left-0 right-0 z-30 flex justify-center pointer-events-none">
+          <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
+            Pulsa la instalación destino
+          </span>
+        </div>
+      )}
       {mostrarSelector && (
         <SelectorTipo onSelect={handleSelectTipo} onClose={() => setMostrarSelector(false)} />
       )}
@@ -75,6 +96,26 @@ function AppContent() {
           prefijo={tipoSeleccionado.prefijo}
           onConfirm={handleConfirmCodigo}
           onClose={() => setTipoSeleccionado(null)}
+        />
+      )}
+      {menu && (
+        <MenuContextual
+          x={menu.x}
+          y={menu.y}
+          onConectar={handleConectar}
+          onEditar={() => setFichaNodeId(menu.nodeId)}
+          onBorrar={() => setConfirmId(menu.nodeId)}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {fichaNodeId && (
+        <FichaInstalacion nodeId={fichaNodeId} onClose={() => setFichaNodeId(null)} />
+      )}
+      {confirmId && (
+        <ConfirmDialog
+          mensaje={`¿Borrar la instalación ${confirmId} y todas sus conexiones?`}
+          onConfirm={confirmarBorrado}
+          onCancel={() => setConfirmId(null)}
         />
       )}
     </div>
