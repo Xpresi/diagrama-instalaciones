@@ -18,10 +18,19 @@ export default function RamalEdge({ id, sourceX, sourceY, targetX, targetY, data
       <circle
         cx={midX}
         cy={midY}
-        r={10}
+        r={5}
         fill={active ? '#3b82f6' : '#1e293b'}
         stroke={active ? '#93c5fd' : '#94a3b8'}
         strokeWidth="2"
+        style={{ cursor: 'pointer' }}
+        onClick={handleClick}
+      />
+      {/* Área táctil ampliada invisible */}
+      <circle
+        cx={midX}
+        cy={midY}
+        r={18}
+        fill="transparent"
         style={{ cursor: 'pointer' }}
         onClick={handleClick}
       />
