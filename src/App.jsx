@@ -10,6 +10,7 @@ import MenuContextual from './components/MenuContextual'
 import FichaInstalacion from './components/FichaInstalacion'
 import ConfirmDialog from './components/ConfirmDialog'
 import RamalEdge from './edges/RamalEdge'
+import Toolbar from './components/Toolbar'
 
 function AppContent() {
   const { state, dispatch } = useSchema()
@@ -21,6 +22,7 @@ function AppContent() {
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
   const [menuRamal, setMenuRamal] = useState(null) // { edgeId, x, y }
+  const [mostrarMenu, setMostrarMenu] = useState(false)
 
   const handleLongPress = useCallback((nodeId, e) => {
     const touch = e.touches?.[0] || e
@@ -86,8 +88,16 @@ function AppContent() {
     }))
   }
 
+  function handleBuscarSelect(nodeId) {
+    const node = state.nodes.find(n => n.id === nodeId)
+    if (node && rfInstance) {
+      rfInstance.setCenter(node.position.x + 24, node.position.y + 24, { zoom: 1.5, duration: 500 })
+    }
+  }
+
   return (
     <div className="w-screen h-screen bg-slate-900 overflow-hidden relative pt-14">
+      <Toolbar onBuscarSelect={handleBuscarSelect} onMenuClick={() => setMostrarMenu(true)} />
       <Canvas
         onInit={setRfInstance}
         edgeTypes={edgeTypes}
