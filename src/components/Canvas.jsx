@@ -30,7 +30,7 @@ const nodeTypes = {
   rejilla:    RejillaNode,
 }
 
-export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado }) {
+export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, onConectarCompletado, moviendoNodeId, onMoverCompletado }) {
   const { state, dispatch } = useSchema()
 
   const onNodesChange = useCallback(changes => {
@@ -60,6 +60,21 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
     }
   }, [conectandoDesde, dispatch, onConectarCompletado, edgeData])
 
+  const onPaneClick = useCallback((e) => {
+    if (!moviendoNodeId) return
+    // Convertir coordenadas de pantalla a coordenadas del canvas
+    const bounds = e.currentTarget?.getBoundingClientRect?.() || { left: 0, top: 0 }
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0
+    const flowPos = { x: clientX - bounds.left, y: clientY - bounds.top }
+    // React Flow expone screenToFlowPosition si tenemos la instancia, pero podemos usar la posición del evento
+    // El evento onPaneClick de React Flow ya trae position en coordenadas del canvas
+    const x = Math.round((e.position?.x ?? flowPos.x) / GRID_SIZE) * GRID_SIZE
+    const y = Math.round((e.position?.y ?? flowPos.y) / GRID_SIZE) * GRID_SIZE
+    dispatch({ type: 'UPDATE_NODE', payload: { id: moviendoNodeId, changes: { position: { x, y } } } })
+    onMoverCompletado?.()
+  }, [moviendoNodeId, dispatch, onMoverCompletado])
+
   return (
     <div className="w-full h-full">
       <ReactFlow
@@ -69,6 +84,7 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         snapToGrid={true}
@@ -76,7 +92,7 @@ export default function Canvas({ onInit, edgeTypes, edgeData, conectandoDesde, o
         fitView
         panOnScroll={false}
         zoomOnPinch={true}
-        panOnDrag={!conectandoDesde}
+        panOnDrag={!conectandoDesde && !moviendoNodeId}
         selectionOnDrag={false}
         onInit={onInit}
       >

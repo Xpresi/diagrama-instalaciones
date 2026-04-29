@@ -1,4 +1,4 @@
-export default function MenuContextual({ x, y, onConectar, onEditar, onBorrar, onClose }) {
+export default function MenuContextual({ x, y, onMover, onConectar, onEditar, onBorrar, onClose }) {
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
       <div
@@ -10,7 +10,7 @@ export default function MenuContextual({ x, y, onConectar, onEditar, onBorrar, o
         onClick={e => e.stopPropagation()}
       >
         {[
-          { label: 'Mover',    action: onClose    },
+          { label: 'Mover',    action: onMover    },
           { label: 'Conectar', action: onConectar },
           { label: 'Editar',   action: onEditar   },
           { label: 'Borrar',   action: onBorrar, danger: true },

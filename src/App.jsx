@@ -23,6 +23,7 @@ function AppContent() {
   const [fichaNodeId, setFichaNodeId] = useState(null)
   const [confirmId, setConfirmId] = useState(null)
   const [conectandoDesde, setConectandoDesde] = useState(null)
+  const [moviendoNodeId, setMoviendoNodeId] = useState(null)
   const [menuRamal, setMenuRamal] = useState(null) // { edgeId, x, y }
   const [mostrarMenu, setMostrarMenu] = useState(false)
 
@@ -78,6 +79,10 @@ function AppContent() {
     setConectandoDesde(menu.nodeId)
   }
 
+  function handleMover() {
+    setMoviendoNodeId(menu.nodeId)
+  }
+
   function confirmarBorrado() {
     dispatch({ type: 'DELETE_NODE', payload: confirmId })
     setConfirmId(null)
@@ -107,12 +112,14 @@ function AppContent() {
         edgeData={buildEdgeHandlers()}
         conectandoDesde={conectandoDesde}
         onConectarCompletado={() => setConectandoDesde(null)}
+        moviendoNodeId={moviendoNodeId}
+        onMoverCompletado={() => setMoviendoNodeId(null)}
       />
       <BotonAnadir onClick={() => setMostrarSelector(true)} />
-      {conectandoDesde && (
+      {(conectandoDesde || moviendoNodeId) && (
         <div className="fixed top-16 left-0 right-0 z-30 flex justify-center pointer-events-none">
           <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
-            Pulsa la instalación destino
+            {conectandoDesde ? 'Pulsa la instalación destino' : 'Pulsa en el canvas donde moverlo'}
           </span>
         </div>
       )}
@@ -130,6 +137,7 @@ function AppContent() {
         <MenuContextual
           x={menu.x}
           y={menu.y}
+          onMover={handleMover}
           onConectar={handleConectar}
           onEditar={() => setFichaNodeId(menu.nodeId)}
           onBorrar={() => setConfirmId(menu.nodeId)}
