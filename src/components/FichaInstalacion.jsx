@@ -85,6 +85,16 @@ export default function FichaInstalacion({ nodeId, onClose }) {
               onChange={e => handleChange('cl', e.target.value === '' ? null : parseFloat(e.target.value))}
             />
           </div>
+          <div>
+            <label className="text-xs text-slate-400 mb-1 block">Cloración</label>
+            <button
+              type="button"
+              onClick={() => handleChange('cloracion', !form.cloracion)}
+              className={`w-full py-2 rounded-lg text-sm font-bold ${form.cloracion ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+            >
+              {form.cloracion ? 'Cloración sí' : 'Cloración no'}
+            </button>
+          </div>
         </div>
         <div>
           <label className="text-xs text-slate-400 mb-1 block">Notas</label>
@@ -95,6 +105,27 @@ export default function FichaInstalacion({ nodeId, onClose }) {
             onChange={e => handleChange('notas', e.target.value)}
           />
         </div>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Responsable {i}</label>
+              <input
+                className={inputCls}
+                value={form[`resp${i}`] || ''}
+                onChange={e => handleChange(`resp${i}`, e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Teléfono {i}</label>
+              <input
+                type="tel"
+                className={inputCls}
+                value={form[`tfno${i}`] || ''}
+                onChange={e => handleChange(`tfno${i}`, e.target.value)}
+              />
+            </div>
+          </div>
+        ))}
         <button
           onClick={handleSave}
           className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl"

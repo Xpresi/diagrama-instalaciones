@@ -12,6 +12,7 @@ import ConfirmDialog from './components/ConfirmDialog'
 import RamalEdge from './edges/RamalEdge'
 import Toolbar from './components/Toolbar'
 import MenuPrincipal from './components/MenuPrincipal'
+import ModalGuardar from './components/ModalGuardar'
 import { useExportImport } from './hooks/useExportImport'
 
 function AppContent() {
@@ -25,9 +26,10 @@ function AppContent() {
   const [conectandoDesde, setConectandoDesde] = useState(null)
   const [menuMid, setMenuMid] = useState(null)   // { edgeId, flowX, flowY }
   const [mostrarMenu, setMostrarMenu] = useState(false)
+  const [mostrarModalGuardar, setMostrarModalGuardar] = useState(false)
 
   const edgeTypes = useMemo(() => ({ ramal: RamalEdge }), [])
-  const { exportar, importar } = useExportImport(state, dispatch)
+  const { exportarConPicker, exportarConNombre, usaPicker, importar } = useExportImport(state, dispatch)
 
   // Crea un nodo de unión en el punto medio, parte la arista en dos
   function crearUnionEnMedio(edgeId, flowX, flowY) {
@@ -135,7 +137,7 @@ function AppContent() {
         onNodeSingleTap={handleNodeSingleTap}
         onNodeDoubleTap={handleNodeDoubleTap}
       />
-      <BotonAnadir onClick={() => setMostrarSelector(true)} />
+      {!fichaNodeId && <BotonAnadir onClick={() => setMostrarSelector(true)} />}
       {conectandoDesde && (
         <div className="fixed top-16 left-0 right-0 z-30 flex justify-center pointer-events-none">
           <span className="bg-blue-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
@@ -201,9 +203,19 @@ function AppContent() {
       )}
       {mostrarMenu && (
         <MenuPrincipal
-          onGuardar={exportar}
+          onGuardar={() => {
+            setMostrarMenu(false)
+            if (usaPicker) exportarConPicker()
+            else setMostrarModalGuardar(true)
+          }}
           onCargar={(file) => importar(file, {}, {})}
           onClose={() => setMostrarMenu(false)}
+        />
+      )}
+      {mostrarModalGuardar && (
+        <ModalGuardar
+          onConfirm={(nombre) => { exportarConNombre(nombre); setMostrarModalGuardar(false) }}
+          onClose={() => setMostrarModalGuardar(false)}
         />
       )}
       {confirmId && (
