@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/diagrama-conexiones/sw.js', { scope: '/diagrama-conexiones/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/diagrama-instalaciones/sw.js', { scope: '/diagrama-instalaciones/' })})}
